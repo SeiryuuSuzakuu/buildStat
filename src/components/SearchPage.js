@@ -1,6 +1,6 @@
-import React from 'react';
-import { Input, Icon, Tree } from 'antd';
-import { Link } from 'react-router-dom';
+import React from "react";
+import { Input, Icon, Tree } from "antd";
+import { Link } from "react-router-dom";
 
 const { TreeNode, DirectoryTree } = Tree;
 let tree = {};
@@ -9,7 +9,7 @@ class SearchPage extends React.Component {
   constructor() {
     super();
     this.state = {
-      search: '',
+      search: "",
       folders: []
     };
 
@@ -20,25 +20,33 @@ class SearchPage extends React.Component {
   }
 
   componentDidMount() {
-    this.setState(
-      {
-        folders: this.props.folders.filter(folder => folder.path !== '\\').map(
-          folder => folder.path = folder.path.replace(/[\\]/g, '/').substring(1))
-      })
+    this.setState({
+      folders: this.props.folders
+        .filter(folder => folder.path !== "\\")
+        .map(folder => {
+          folder.path = folder.path.replace(/[\\]/g, "/");
+          if (folder.path.startsWith("/")) {
+            folder.path = folder.path.substring(1);
+          }
+          return folder;
+        })
+    });
   }
 
   handleChange(event) {
     this.setState({ search: event.target.value }, () => {
       this.setState({
-        folders: this.props.folders.filter(folder => folder.path !== '\\').filter(folder => {
-          if (this.state.search !== '') {
-            const arr = folder.path.split('/');
-           return arr[arr.length - 1]
-              .toLowerCase()
-              .includes(this.state.search.toLowerCase());
-          }
-          return folder;
-        }).map(folder => folder.path)
+        folders: this.props.folders
+          .filter(folder => folder.path !== "\\")
+          .filter(folder => {
+            if (this.state.search !== "") {
+              const arr = folder.path.split("/");
+              return arr[arr.length - 1]
+                .toLowerCase()
+                .includes(this.state.search.toLowerCase());
+            }
+            return folder;
+          })
       });
     });
   }
@@ -51,10 +59,10 @@ class SearchPage extends React.Component {
   }
 
   addNode(obj) {
-    var splitpath = obj.split('/');
+    var splitpath = obj.split("/");
     var ptr = tree;
     for (let i = 0; i < splitpath.length; i++) {
-      let node = { name: splitpath[i], leaf: true, path: '/' + obj };
+      let node = { name: splitpath[i], leaf: true, path: "/" + obj };
       ptr[splitpath[i]] = ptr[splitpath[i]] || node;
       ptr[splitpath[i]].children = ptr[splitpath[i]].children || {};
       ptr = ptr[splitpath[i]].children;
@@ -63,9 +71,9 @@ class SearchPage extends React.Component {
 
   objectToArr(node) {
     Object.keys(node || {}).map(k => {
-      if (node[k].children) {      
-         if(Object.values(node[k].children).length > 0){
-           node[k].leaf = false;
+      if (node[k].children) {
+        if (Object.values(node[k].children).length > 0) {
+          node[k].leaf = false;
         }
         this.objectToArr(node[k]);
       }
@@ -90,41 +98,35 @@ class SearchPage extends React.Component {
     });
   }
 
-  
-    
   render() {
-    const treeNodes = this.foldersToTreeNodes(this.state.folders).map(node => {
-      const childNodes = node.children.length > 0 && this.generateNodeElement(node.children);
+    const treeNodes = this.foldersToTreeNodes(
+      this.state.folders.map(folder => folder.path)
+    ).map(node => {
+      const childNodes =
+        node.children.length > 0 && this.generateNodeElement(node.children);
       return (
-        <TreeNode expanded={true}
-          key={node.path}
+        <TreeNode
+          expanded={true}
+          key={node.name}
           title={<Link to={node.path}>{node.name}</Link>}
           isLeaf={node.leaf}
-          dataRef={node}>
+          dataRef={node}
+        >
           {childNodes}
         </TreeNode>
       );
     });
 
-    const dupkakupka = <TreeNode key="dupa" title="dupa" >
-    <TreeNode key="kupa" title="kupa">
-    </TreeNode>
-</TreeNode>
-
-console.log(dupkakupka)
     return (
       <div className="certain-category-search-wrapper" style={{ width: 300 }}>
-        <Input 
+        <Input
           suffix={<Icon type="search" className="certain-category-icon" />}
-          style={{ width: 300, padding: 10}}
+          style={{ width: 300, padding: 10 }}
           placeholder="input search"
           value={this.state.search}
           onChange={event => this.handleChange(event)}
         />
-        <DirectoryTree  style={{top: 10}} defaultExpandAll defaultExpandedKeys={['/CBR']}>{treeNodes}</DirectoryTree>
-        {/* <DirectoryTree style={{top: 10}} defaultExpandedKeys={['dupa']}>
-          {dupkakupka}
-        </DirectoryTree> */}
+        <DirectoryTree style={{ top: 10 }}>{treeNodes}</DirectoryTree>
       </div>
     );
   }
