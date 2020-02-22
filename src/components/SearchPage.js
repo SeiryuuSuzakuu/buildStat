@@ -1,9 +1,43 @@
 import React from "react";
 import { Input, Icon, Tree } from "antd";
 import { Link } from "react-router-dom";
+import groupBy from "../helpers/groupBy";
 
 const { TreeNode, DirectoryTree } = Tree;
-let tree = {};
+
+const treeData = (data, acc = "") => {
+  var all = groupBy(data, 0);
+  return Object.keys(all).map(x => {
+    const path = `${acc}/${x}`;
+    const childrenArray = all[x]
+      .map(x => x.slice(1))
+      .filter(x => x.length !== 0);
+    const hasChildren = childrenArray > 0;
+    const children = hasChildren ? treeData(childrenArray, path) : [];
+    return createTreeData(x, !hasChildren, path, children);
+  });
+};
+const createTreeData = (name, leaf, path, children) => ({
+  name,
+  leaf,
+  path,
+  children
+});
+
+const generateNodeElement = nodes =>
+  nodes.map(node => {
+    const ch =
+      node.children.length > 0 ? generateNodeElement(node.children) : null;
+    return (
+      <TreeNode
+        key={node.path}
+        title={<Link to={node.path}>{node.name}</Link>}
+        isLeaf={node.leaf}
+      >
+        {ch}
+      </TreeNode>
+    );
+  });
 
 class SearchPage extends React.Component {
   constructor() {
@@ -12,121 +46,46 @@ class SearchPage extends React.Component {
       search: "",
       folders: []
     };
-
     this.handleChange = this.handleChange.bind(this);
-    this.addNode = this.addNode.bind(this);
-    this.objectToArr = this.objectToArr.bind(this);
-    this.generateNodeElement = this.generateNodeElement.bind(this);
   }
 
   componentDidMount() {
     this.setState({
       folders: this.props.folders
         .filter(folder => folder.path !== "\\")
-        .map(folder => {
-          folder.path = folder.path.replace(/[\\]/g, "/");
-          if (folder.path.startsWith("/")) {
-            folder.path = folder.path.substring(1);
-          }
-          return folder;
-        })
+        .map(x => x.path.replace("\\", "").replace(/[\\]/g, "/"))
     });
   }
 
   handleChange(event) {
-    this.setState({ search: event.target.value }, () => {
-      this.setState({
-        folders: this.props.folders
-          .filter(folder => folder.path !== "\\")
-          .filter(folder => {
-            if (this.state.search !== "") {
-              const arr = folder.path.split("/");
-              return arr[arr.length - 1]
-                .toLowerCase()
-                .includes(this.state.search.toLowerCase());
-            }
-            return folder;
-          })
-      });
-    });
-  }
-
-  foldersToTreeNodes(foldersArray) {
-    tree = {};
-    foldersArray.map(folder => this.addNode(folder));
-    this.objectToArr(tree);
-    return Object.values(tree);
-  }
-
-  addNode(obj) {
-    var splitpath = obj.split("/");
-    var ptr = tree;
-    for (let i = 0; i < splitpath.length; i++) {
-      let node = { name: splitpath[i], leaf: true, path: "/" + obj };
-      ptr[splitpath[i]] = ptr[splitpath[i]] || node;
-      ptr[splitpath[i]].children = ptr[splitpath[i]].children || {};
-      ptr = ptr[splitpath[i]].children;
-    }
-  }
-
-  objectToArr(node) {
-    Object.keys(node || {}).map(k => {
-      if (node[k].children) {
-        if (Object.values(node[k].children).length > 0) {
-          node[k].leaf = false;
-        }
-        this.objectToArr(node[k]);
-      }
-      return node;
-    });
-    if (node.children) {
-      node.children = Object.values(node.children);
-      node.children.forEach(this.objectToArr);
-    }
-  }
-
-  generateNodeElement(nodes) {
-    return nodes.map(node => {
-      return (
-        <TreeNode
-          key={node.path}
-          title={<Link to={node.path}>{node.name}</Link>}
-          isLeaf={node.leaf}
-          dataRef={node}
-        ></TreeNode>
-      );
-    });
+    this.setState({ search: event.target.value });
   }
 
   render() {
-    const treeNodes = this.foldersToTreeNodes(
-      this.state.folders.map(folder => folder.path)
-    ).map(node => {
-      const childNodes =
-        node.children.length > 0 && this.generateNodeElement(node.children);
-      return (
-        <TreeNode
-          expanded={true}
-          key={node.name}
-          title={<Link to={node.path}>{node.name}</Link>}
-          isLeaf={node.leaf}
-          dataRef={node}
-        >
-          {childNodes}
-        </TreeNode>
-      );
-    });
-
+    if (this.state.folders.length === 0) {
+      return <h1>No data</h1>;
+    }
+    let data = null;
+    if (this.state.search !== "") {
+      data = this.state.folders
+        .filter(x => x.toLowerCase().indexOf(this.state.search) !== -1)
+        .map(x => createTreeData(x, true, x, []));
+    } else {
+      data = treeData(this.state.folders.map(x => x.split("/")));
+    }
+    const treeNodes = generateNodeElement(data);
     return (
-      <div className="certain-category-search-wrapper" style={{ width: 300 }}>
+      <div className='certain-category-search-wrapper' style={{ width: 300 }}>
         <Input
-          suffix={<Icon type="search" className="certain-category-icon" />}
+          suffix={<Icon type='search' className='certain-category-icon' />}
           style={{ width: 300, padding: 10 }}
-          placeholder="input search"
+          placeholder='input search'
           value={this.state.search}
           onChange={event => this.handleChange(event)}
         />
-        <DirectoryTree style={{ top: 10 }}>{treeNodes}</DirectoryTree>
+        <DirectoryTree defaultExpandAll style={{ top: 10 }}>
+          {treeNodes}
+        </DirectoryTree>
       </div>
     );
   }
